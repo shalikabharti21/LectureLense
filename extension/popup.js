@@ -28,7 +28,7 @@ async function fetchTranscriptFromPage(tabId) {
     if (!videoId) return null;
 
     console.log("📝 Fetching transcript from server for:", videoId);
-    const resp = await fetch(`http://localhost:5001/transcript/${videoId}`);
+    const resp = await fetch(`https://lecturelense.onrender.com/transcript/${videoId}`);
     const data = await resp.json();
     
     console.log("📝 Transcript:", data.success ? "✅ got it!" : "❌ failed");
@@ -75,7 +75,7 @@ async function handleAsk() {
       statusBox.style.background = "#fef3c7";
     }
 
-    const backendResponse = await fetch("http://localhost:5001/ask", {
+    const backendResponse = await fetch("https://lecturelense.onrender.com/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

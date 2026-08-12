@@ -74,7 +74,7 @@ lecture-lens/
 ### 1. Clone the Repository
 
 ```bash
-https://github.com/Ankita-kuntal/LectureLens.git
+https://github.com/Ankita-kuntal/LectureLense.git
 cd lecture-lens
 ```
 
@@ -167,7 +167,7 @@ If no transcript exists, the extension captures the current video frame and send
 
 ## 🙋 About
 
-Built by a IT student who kept getting distracted while studying engineering concepts on YouTube at 3am.
+Built by a CSE  student who kept getting distracted while studying engineering concepts on YouTube at 3am.
 
 This is a personal project built to solve a real problem — not just a tutorial clone.
 
