@@ -74,7 +74,7 @@ lecture-lens/
 ### 1. Clone the Repository
 
 ```bash
-https://github.com/Ankita-kuntal/LectureLense.git
+https://github.com/shalikabahrti21/LectureLense.git
 cd lecture-lens
 ```
 
