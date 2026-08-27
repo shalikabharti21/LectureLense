@@ -34,8 +34,8 @@ LectureLens solves this by providing **context-aware answers directly inside You
 |-------|------------|
 | Extension | Chrome Extension (Manifest V3) |
 | Backend | Node.js + Express |
-| AI — Text | [Groq API](https://console.groq.com) — Llama 3.3 70B Versatile |
-| AI — Vision | Google Gemini Flash |
+| AI — Text | [Groq API](https://console.groq.com) — OpenAI GPT-OSS 120B |
+| AI — Vision | Google Gemini 3.6 Flash |
 | Transcript | yt-dlp |
 | Language | JavaScript |
 
