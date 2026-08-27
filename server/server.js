@@ -5,6 +5,8 @@ require("dotenv").config();
 
 const { execSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 
 const app = express();
@@ -33,29 +35,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// Fetch transcript
-// app.get("/transcript/:videoId", async (req, res) => {
-//   const { videoId } = req.params;
-//   try {
-//     // Use YouTube Data API to get caption list
-//     const listRes = await fetch(
-//       `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${YOUTUBE_API_KEY}`
-//     );
-//     const listData = await listRes.json();
-//     console.log("Captions list:", JSON.stringify(listData).substring(0, 200));
-    
-//     res.json({ success: false, transcript: null, message: "Use browser fetch" });
-//   } catch(e) {
-//     res.json({ success: false, error: e.message });
-//   }
-// });
-
-// app.get("/transcript/:videoId", async (req, res) => {
-//   res.json({ success: false, transcript: null, message: "Transcript fetched from browser" });
-// });
-
-
-
 const transcriptCache = {}; // in-memory cache
 
 app.get("/transcript/:videoId", async (req, res) => {
@@ -69,16 +48,28 @@ app.get("/transcript/:videoId", async (req, res) => {
   
   try {
     console.log(`📝 Getting transcript for: ${videoId}`);
+    const tmpDir = os.tmpdir();
+    const outputTemplate = path.join(tmpDir, `lecturelens_${videoId}_%(id)s`);
+
     execSync(
-      `yt-dlp --write-auto-sub --sub-lang en --skip-download --sub-format json3 -o "C:/tmp/%(id)s" "https://www.youtube.com/watch?v=${videoId}"`,
+      `yt-dlp --write-sub --write-auto-sub --sub-lang "en.*,en" --skip-download --sub-format json3 -o "${outputTemplate.replace(/\\/g, '/')}" "https://www.youtube.com/watch?v=${videoId}"`,
       { timeout: 30000, encoding: 'utf8' }
     );
     
-    const filePath = `C:/tmp/${videoId}.en.json3`;
-    if (!fs.existsSync(filePath)) return res.json({ success: false, transcript: null });
-    
+    // Search for generated subtitle files matching lecturelens_${videoId}_*.json3
+    const files = fs.readdirSync(tmpDir).filter(f => f.startsWith(`lecturelens_${videoId}_`) && f.endsWith('.json3'));
+    if (files.length === 0) {
+      console.log(`⚠️ No subtitle json3 file found in ${tmpDir} for ${videoId}`);
+      return res.json({ success: false, transcript: null });
+    }
+
+    const filePath = path.join(tmpDir, files[0]);
     const json3 = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    fs.unlinkSync(filePath);
+    
+    // Clean up all matching temp subtitle files for this video
+    files.forEach(f => {
+      try { fs.unlinkSync(path.join(tmpDir, f)); } catch {}
+    });
     
     const segments = (json3.events || [])
       .filter(e => e.segs && e.tStartMs !== undefined)
@@ -392,7 +383,7 @@ IMPORTANT: Always include at least 1 clickable timestamp like "At 15:30" from th
         "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
     { 
       role: "system", 
@@ -408,6 +399,10 @@ IMPORTANT: Always include at least 1 clickable timestamp like "At 15:30" from th
   );
 
   const data = await response.json();
+  if (!response.ok) {
+    console.error("❌ Groq API Error:", response.status, data);
+    throw new Error(data.error?.message || `Groq API returned error HTTP ${response.status}`);
+  }
   return data.choices?.[0]?.message?.content || "No response generated";
 }
 
@@ -427,7 +422,7 @@ async function answerWithVision(question, videoInfo, visualFrames, needsTimeline
   console.log("🔍 Timeline mode:", needsTimeline ? "YES" : "NO");
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     const imageParts = visualFrames.map((frame) => {
       const base64Data = frame.image
@@ -532,7 +527,7 @@ async function answerWithBoth(question, videoInfo, transcript, visualFrames, nee
   console.log("🎯 Combined: transcript + vision");
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
     const contextTranscript = transcript.substring(0, 2500);
 
     const framesToUse = visualFrames.slice(0, 3);
@@ -657,7 +652,7 @@ Be warm and helpful like ChatGPT!`;
         "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         max_tokens: 1000
@@ -666,6 +661,10 @@ Be warm and helpful like ChatGPT!`;
   );
 
   const data = await response.json();
+  if (!response.ok) {
+    console.error("❌ Groq API Error:", response.status, data);
+    throw new Error(data.error?.message || `Groq API returned error HTTP ${response.status}`);
+  }
   return data.choices?.[0]?.message?.content || "Unable to generate answer";
 }
 
